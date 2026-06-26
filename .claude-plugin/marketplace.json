@@ -11,7 +11,7 @@
       "description": "Fetches IT-consultant profiles from Decidalo, enriches project metadata, optionally tailors text to a target customer, standardizes formatting, and renders Word .docx Sales Profile templates.",
       "source": {
         "source": "github",
-        "repo": "lpetersdorf/decidalo_agent"
+        "repo": "Blueforte-GmbH/decidalo_agent"
       }
     }
   ]
