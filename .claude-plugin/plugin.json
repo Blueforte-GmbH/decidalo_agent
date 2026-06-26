@@ -1,0 +1,14 @@
+{
+  "name": "decidalo-agent",
+  "version": "1.0.0",
+  "displayName": "Decidalo Sales Profile Agent",
+  "description": "Decidalo Sales Profile export pipeline — fetches IT-consultant profiles from the Decidalo platform, enriches project metadata, optionally tailors text to a target customer, standardizes formatting, and renders Word .docx Sales Profile templates.",
+  "keywords": ["decidalo", "sales-profile", "cv", "word", "staffing", "blueforte"],
+  "homepage": "https://github.com/lpetersdorf/decidalo_agent",
+  "license": "MIT",
+  "author": {
+    "name": "Blueforte GmbH",
+    "email": "lukas.petersdorf@blueforte.com"
+  },
+  "repository": "https://github.com/lpetersdorf/decidalo_agent"
+}

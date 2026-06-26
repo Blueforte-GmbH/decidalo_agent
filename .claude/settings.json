@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 skills/enrich-information/scripts/enrich_projects.py*)",
+      "Bash(python3 skills/map-profile/scripts/map_profile_to_template.py*)",
+      "Bash(python3 skills/fill-template/scripts/fill_template.py*)",
+      "Bash(ls templates/*)",
+      "Bash(ls output/*)"
+    ]
+  }
+}

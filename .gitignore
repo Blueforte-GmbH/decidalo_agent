@@ -1,0 +1,21 @@
+.DS_Store
+
+# Environment and local config
+.env
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Sales Profile Word templates — company IP, installed locally via /setup-templates,
+# never committed to the public repo. Keep the README placeholder.
+templates/*.docx
+
+# Generated or local project data
+output/*
+!output/.gitkeep

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "decidalo": {
+      "type": "http",
+      "url": "https://decidalo-v3-prod-mcp-server.azurewebsites.net/mcp",
+      "headers": {
+        "Authorization": "Bearer ${DECIDALO_IMPORT_API_KEY}"
+      }
+    }
+  }
+}
