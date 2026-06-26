@@ -20,11 +20,10 @@ The plugin source is pinned to the `github` source type tracking the default bra
 ## Setup (local development)
 
 ```bash
-pip install -r requirements.txt   # lxml, click, requests, python-dotenv
-cp .env.example .env              # then fill in DECIDALO_IMPORT_API_KEY
+pip install -r requirements.txt   # lxml, click, requests
 ```
 
-The Decidalo MCP server is configured in `.mcp.json` (HTTP transport) and reads `DECIDALO_IMPORT_API_KEY` from the environment.
+The Decidalo MCP server is configured in `.mcp.json` — an Azure Container App wrapper (`decidalo-api-wrapper…northeurope.azurecontainerapps.io/sse`, SSE transport) that holds the Decidalo Import API token **server-side**. It is reachable **without a client token**, so no API key is needed for either profile fetch or enrichment.
 
 **MCP tool naming gotcha:** `.mcp.json` names the server `decidalo`, but the agents declare their tools as `mcp__claude_ai_Decidalo__*` — the form Claude Cowork / claude.ai exposes (server prefixed with `claude_ai_`). In the local CLI the same tools are `mcp__decidalo__*`. Don't "normalize" the agent `tools:` lists to one form; they target the cloud namespace on purpose.
 
@@ -49,9 +48,16 @@ python3 skills/fill-template/scripts/fill_template.py --list-fields --template "
 
 Run the three steps manually:
 ```bash
-# 1. Enrich project metadata (requires DECIDALO_IMPORT_API_KEY)
+# 1. Enrich project metadata — data comes from the get_project MCP tool, so this is
+#    two script calls around the MCP fetch (no API key in the script):
+#    a) list which projects need data
+python3 skills/enrich-information/scripts/enrich_projects.py \
+  --profile output/<user_id>_profile_raw.json --list-pending
+#    b) call get_project for each ID, save responses to output/<user_id>_project_details.json,
+#       then merge:
 python3 skills/enrich-information/scripts/enrich_projects.py \
   --profile output/<user_id>_profile_raw.json \
+  --details output/<user_id>_project_details.json \
   --output output/<user_id>_profile_enriched.json
 
 # 2. Map to template-ready JSON
@@ -99,7 +105,6 @@ Five agents in `agents/`:
 Slash commands (in `commands/`):
 - `/create_cv [UserID]` — runs the `profile-export` orchestrator end-to-end
 - `/setup-templates [paths]` — installs the `.docx` templates locally (see `setup-templates` skill)
-- `/setup-env [file|token]` — writes `DECIDALO_IMPORT_API_KEY` into a local `.env` (for the enrichment step; mainly for Cowork, where env vars aren't injected). Script: `skills/setup-env/scripts/setup_env.py` (hard-codes the `.env` filename so the Bash call never references it).
 - `/list-rules` — shows active standardization rules
 - `/edit-rules` — adds or changes a standardization rule
 
@@ -143,12 +148,20 @@ Skills are bucketed by `categoryName` — see `TOOLS_CATEGORIES`, `PROGRAMMING_C
 
 ## Enrichment
 
-`enrich_projects.py` calls `https://import.decidalo.app/importapi/Project?projectid=<id>` for each project that has a `projectReferenceId` but is missing `projectName` or `industryName`. It reads `DECIDALO_IMPORT_API_KEY` from `.env` or the environment. Without a key the raw JSON still passes through; enriched fields are title, description, and industry.
+Project metadata is fetched via the **`get_project` MCP tool** of the Decidalo Container App (an Azure Container App that runs the MCP server and holds the Import API token as a server-side env var — clients call it without a token). `enrich_projects.py` itself makes **no network calls** and needs **no API key**; it has two modes:
+
+- `--list-pending` — prints a JSON array of `projectReferenceId`s that have a reference but are missing `projectName`/`industryName`. The agent calls `get_project(project_id=…)` for each.
+- `--details <file>` — merges the collected `get_project` responses (`{"<id>": <response>}`, object or JSON string) back into the profile. Enriched fields are title, description, and industry.
+
+The agent orchestrates the loop (list → get_project per ID → save to `output/<user_id>_project_details.json` → merge); the script keeps all parsing/merge logic. See the `enrich-information` skill for the exact steps.
+
+> Note: the Import API token lives server-side in the Azure Container App wrapper. `.mcp.json` points at that tokenless SSE endpoint, so neither enrichment nor profile fetch needs a client-side API key.
 
 ## Output artifacts per export
 
 ```
 output/<user_id>_profile_raw.json                                  ← from MCP, unmodified
+output/<user_id>_project_details.json                              ← raw get_project responses, keyed by ID (enrichment input)
 output/<user_id>_profile_enriched.json                             ← project titles/industries added
 output/<user_id>_template_data.json                                ← mapped, ready for standardizer
 output/<user_id>_template_data_<customer_slug>.json                ← customer-tailored copy (optional)

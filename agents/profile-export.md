@@ -24,7 +24,7 @@ Prefer those contracts. Do not recreate their scripts or write temporary transfo
    - Fetch the full profile by UserID from Decidalo MCP.
    - Preserve the candidate profile picture signed URL when the MCP profile tool returns it.
    - Save `output/<user_id>_profile_raw.json`.
-   - Use `$enrich-information` to create `output/<user_id>_profile_enriched.json`.
+   - Use `$enrich-information` to create `output/<user_id>_profile_enriched.json` (enrichment data is fetched via the `get_project` MCP tool — no API key needed; see the skill for the list-pending → get_project → merge flow).
    - Use `$map-profile` to create `output/<user_id>_template_data.json`.
    - Write `output/<user_id>_profile_manifest.json`.
 

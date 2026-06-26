@@ -1,57 +1,32 @@
 #!/usr/bin/env python3
 """
-Enrich Decidalo project entries with title and industry name from the Import API.
+Enrich Decidalo project entries with title, description, and industry name.
 
-Each project needs a "projectReferenceId" field — the MCP profile tool returns this
-when projectName/industryName are null. The Import API fills in those gaps.
+The project data comes from the `get_project` MCP tool of the Decidalo Container App
+(the token lives server-side in Azure — no API key on the client). This script no
+longer makes any network calls itself. Instead the calling agent:
 
-API key priority:
-  1. --api-key / -k CLI flag
-  2. DECIDALO_IMPORT_API_KEY environment variable
-  3. .env file in the project root
+  1. Runs this script with --list-pending to learn which projectReferenceIds are
+     still missing a title or industry.
+  2. Calls the `get_project` MCP tool once per pending ID.
+  3. Writes the raw responses to a details JSON file: {"<project_id>": <response>, ...}
+     where each response is the get_project result (a JSON object or a JSON string).
+  4. Runs this script with --details <file> to merge those responses into the profile.
+
+Modes:
+  --list-pending   Print a JSON array of projectReferenceIds needing enrichment.
+  --details FILE   Merge get_project responses from FILE into the profile.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
 try:
     import click
-    import requests
 except ImportError:
     print("ERROR: Missing dependencies. Run: pip install -r requirements.txt", file=sys.stderr)
     sys.exit(1)
-
-try:
-    from dotenv import load_dotenv
-    for candidate in (Path.cwd(), *Path.cwd().parents, Path(__file__).resolve().parent.parent):
-        env_path = candidate / ".env"
-        if env_path.exists():
-            load_dotenv(env_path)
-            break
-except ImportError:
-    pass
-
-API_URL = "https://import.decidalo.app/importapi/Project"
-
-
-def fetch_project_details(project_id: int, api_key: str, verbose: bool = False) -> dict | None:
-    try:
-        resp = requests.get(
-            API_URL,
-            params={"projectid": project_id},
-            headers={"accept": "text/plain", "X-Api-Key": api_key},
-            timeout=10,
-        )
-        if verbose:
-            click.echo(f"  HTTP {resp.status_code} — raw: {resp.text[:300]}")
-        if resp.status_code == 200:
-            return resp.json()
-        click.echo(f"  WARNING: HTTP {resp.status_code} for project {project_id}", err=True)
-    except requests.RequestException as e:
-        click.echo(f"  Request error for project {project_id}: {e}", err=True)
-    return None
 
 
 def _first(d: dict, *keys) -> str | None:
@@ -64,23 +39,7 @@ def _first(d: dict, *keys) -> str | None:
     return None
 
 
-@click.command()
-@click.option("--profile", "-p", required=True, help="Path to the profile JSON file")
-@click.option("--api-key", "-k", default=None, help="Import API key (or DECIDALO_IMPORT_API_KEY env var)")
-@click.option("--output", "-o", default=None, help="Output path (default: overwrites input file)")
-@click.option("--verbose", "-v", is_flag=True, help="Print raw API responses to debug field names")
-def main(profile: str, api_key: str, output: str, verbose: bool) -> None:
-    """Enrich project entries in a Decidalo profile JSON with title and industry name."""
-
-    api_key = api_key or os.environ.get("DECIDALO_IMPORT_API_KEY")
-    if not api_key:
-        click.echo(
-            "ERROR: Provide --api-key or set DECIDALO_IMPORT_API_KEY in .env or environment",
-            err=True,
-        )
-        sys.exit(1)
-
-    profile_path = Path(profile)
+def _load_profile(profile_path: Path) -> tuple[dict, str, list[dict]]:
     with open(profile_path, encoding="utf-8") as f:
         data = json.load(f)
 
@@ -90,32 +49,95 @@ def main(profile: str, api_key: str, output: str, verbose: bool) -> None:
         click.echo("ERROR: No 'Projects' list found in the profile JSON", err=True)
         sys.exit(1)
 
-    projects: list[dict] = data[projects_key]
-    enriched = 0
+    return data, projects_key, data[projects_key]
 
+
+def _needs_enrichment(project: dict) -> tuple[bool, bool]:
+    """Return (has_name, has_industry) for a project entry."""
+    has_name = bool(_first(project, "projectName", "ProjectName"))
+    has_industry = bool(_first(project, "industryName", "IndustryName"))
+    return has_name, has_industry
+
+
+def _coerce_details(raw) -> dict | None:
+    """get_project may return a JSON object or a plain-text/JSON string. Normalize to dict."""
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else None
+        except (json.JSONDecodeError, ValueError):
+            return None
+    return None
+
+
+@click.command()
+@click.option("--profile", "-p", required=True, help="Path to the profile JSON file")
+@click.option("--details", "-d", default=None,
+              help="Path to a JSON file mapping projectReferenceId -> get_project response")
+@click.option("--list-pending", "list_pending", is_flag=True,
+              help="Print a JSON array of projectReferenceIds that still need enrichment, then exit")
+@click.option("--output", "-o", default=None, help="Output path (default: overwrites input file)")
+def main(profile: str, details: str, list_pending: bool, output: str) -> None:
+    """Enrich project entries in a Decidalo profile JSON with title, description, and industry."""
+
+    profile_path = Path(profile)
+    data, _projects_key, projects = _load_profile(profile_path)
+
+    # --- Mode 1: list the project IDs the agent must fetch via get_project ---
+    if list_pending:
+        pending: list[int] = []
+        for project in projects:
+            ref_id = project.get("projectReferenceId") or project.get("ProjectReferenceId")
+            if not ref_id:
+                continue
+            has_name, has_industry = _needs_enrichment(project)
+            if has_name and has_industry:
+                continue
+            pending.append(int(ref_id))
+        # Machine-readable list on stdout; human note on stderr.
+        click.echo(json.dumps(pending))
+        click.echo(f"{len(pending)} project(s) need enrichment via get_project", err=True)
+        return
+
+    # --- Mode 2: merge fetched get_project responses into the profile ---
+    if not details:
+        click.echo(
+            "ERROR: Provide --details <file> with get_project responses, "
+            "or --list-pending to see which projects need fetching.",
+            err=True,
+        )
+        sys.exit(1)
+
+    with open(details, encoding="utf-8") as f:
+        details_map = json.load(f)
+    if not isinstance(details_map, dict):
+        click.echo("ERROR: --details file must be a JSON object {\"<project_id>\": <response>, ...}", err=True)
+        sys.exit(1)
+
+    enriched = 0
     for project in projects:
         ref_id = project.get("projectReferenceId") or project.get("ProjectReferenceId")
         if not ref_id:
             continue
 
-        has_name = bool(_first(project, "projectName", "ProjectName"))
-        has_industry = bool(_first(project, "industryName", "IndustryName"))
-
+        has_name, has_industry = _needs_enrichment(project)
         if has_name and has_industry:
             continue
 
-        click.echo(f"Fetching project {ref_id}…")
-        details = fetch_project_details(int(ref_id), api_key, verbose)
-        if details is None:
+        raw = details_map.get(str(ref_id))
+        if raw is None:
+            continue
+        detail = _coerce_details(raw)
+        if detail is None:
+            click.echo(f"  WARNING: could not parse get_project response for project {ref_id}", err=True)
             continue
 
-        if verbose:
-            click.echo(f"  Available fields: {list(details.keys())}")
-
-        props = details.get("properties") or {}
-        title = (props.get("name") or {}).get("value") or _first(details, "title", "Title", "projectName", "ProjectName")
+        props = detail.get("properties") or {}
+        title = (props.get("name") or {}).get("value") or _first(detail, "title", "Title", "projectName", "ProjectName")
         description = (props.get("description") or {}).get("value")
-        industry = (details.get("industry") or {}).get("industryName") or _first(details, "industryName", "IndustryName")
+        industry = (detail.get("industry") or {}).get("industryName") or _first(detail, "industryName", "IndustryName")
 
         if not has_name and title:
             key = "ProjectName" if "ProjectName" in project else "projectName"

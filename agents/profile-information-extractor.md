@@ -33,13 +33,31 @@ Do not write ad-hoc transformation scripts. Use the bundled scripts from the ski
 output/<user_id>_profile_raw.json
 ```
 
-4. Enrich project information with `$enrich-information`:
+4. Enrich project information with `$enrich-information`. The enrichment data comes from the `get_project` MCP tool (no API key needed — the token lives server-side in the Decidalo Container App):
 
-```bash
-python3 skills/enrich-information/scripts/enrich_projects.py \
-  --profile output/<user_id>_profile_raw.json \
-  --output output/<user_id>_profile_enriched.json
-```
+   a. List the projects still missing a title/industry:
+
+   ```bash
+   python3 skills/enrich-information/scripts/enrich_projects.py \
+     --profile output/<user_id>_profile_raw.json \
+     --list-pending
+   ```
+
+   b. For each ID in the returned JSON array, call the `get_project` MCP tool (`mcp__claude_ai_Decidalo__get_project` in cloud, `mcp__decidalo__get_project` locally) with `project_id`.
+
+   c. Write the responses to `output/<user_id>_project_details.json`, keyed by project ID:
+   `{ "<project_id>": <get_project response>, ... }`.
+
+   d. Merge them into the enriched profile:
+
+   ```bash
+   python3 skills/enrich-information/scripts/enrich_projects.py \
+     --profile output/<user_id>_profile_raw.json \
+     --details output/<user_id>_project_details.json \
+     --output output/<user_id>_profile_enriched.json
+   ```
+
+   If `--list-pending` returns an empty array, copy the raw file to `output/<user_id>_profile_enriched.json` unchanged.
 
 5. Map the enriched JSON with `$map-profile`:
 
@@ -63,4 +81,4 @@ Include at least `user_id`, `raw_profile`, `enriched_profile`, and `template_dat
 
 Report the paths of all generated JSON artifacts. Tell the user that the next step is to run `project-filler` with `output/<user_id>_template_data.json` or the manifest.
 
-If enrichment cannot run because the Import API key is missing, still write raw and mapped JSON when possible, but report clearly that `output/<user_id>_profile_enriched.json` was not produced.
+If enrichment cannot run because the `get_project` MCP tool is unavailable, still write raw and mapped JSON when possible, but report clearly that `output/<user_id>_profile_enriched.json` was not produced.

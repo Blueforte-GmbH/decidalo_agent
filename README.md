@@ -21,15 +21,11 @@ Marketplace hinzufügen und Plugin installieren:
 
 ### Voraussetzungen
 
-- **Decidalo API-Key:** Lege eine `.env` an (`cp .env.example .env`) und trage
-  `DECIDALO_IMPORT_API_KEY` ein. Der Key wird für die Projekt-Anreicherung
-  benötigt.
-
-  In **Claude Cowork** werden Umgebungsvariablen nicht an MCP-Server/Skripte
-  durchgereicht. Dort: den Decidalo-MCP-Zugriff über einen **OAuth-Connector**
-  einrichten (kein Key nötig), und für die Enrichment-Stufe den Key per
-  `/setup-env` in eine `.env` schreiben (pro Session neu, da Cowork-VMs
-  ephemer sind).
+- **Kein API-Key nötig.** Der Decidalo-MCP-Server ist eine Azure Container App
+  (`decidalo-api-wrapper…northeurope.azurecontainerapps.io/sse`), die den
+  Decidalo-Import-Token serverseitig hält und tokenlos erreichbar ist — sowohl
+  für den Profil-Abruf als auch für die Projekt-Anreicherung (via `get_project`).
+  Eine lokale `.env` mit einem API-Key ist nicht mehr nötig.
 - **Python-Abhängigkeiten** für die mitgelieferten Skripte:
   ```bash
   pip install -r requirements.txt
@@ -90,7 +86,6 @@ Das fertige Dokument und alle Zwischen-Artefakte landen in `output/`.
 |---|---|
 | `/setup-templates [Pfade]` | Word-Vorlagen lokal installieren (Schritt 1). |
 | `/create_cv [UserID]` | Kompletten Export von der UserID bis zur `.docx` ausführen (Schritt 2). |
-| `/setup-env [Datei/Token]` | Decidalo-API-Key in eine lokale `.env` schreiben (für die Enrichment-Stufe, v.a. in Cowork). |
 | `/list-rules` | Aktive Standardisierungs-Regeln anzeigen. |
 | `/edit-rules` | Standardisierungs-Regel hinzufügen oder ändern. |
 
