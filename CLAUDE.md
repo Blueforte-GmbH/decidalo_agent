@@ -99,6 +99,7 @@ Five agents in `agents/`:
 Slash commands (in `commands/`):
 - `/create_cv [UserID]` — runs the `profile-export` orchestrator end-to-end
 - `/setup-templates [paths]` — installs the `.docx` templates locally (see `setup-templates` skill)
+- `/setup-env [file|token]` — writes `DECIDALO_IMPORT_API_KEY` into a local `.env` (for the enrichment step; mainly for Cowork, where env vars aren't injected). Script: `skills/setup-env/scripts/setup_env.py` (hard-codes the `.env` filename so the Bash call never references it).
 - `/list-rules` — shows active standardization rules
 - `/edit-rules` — adds or changes a standardization rule
 
