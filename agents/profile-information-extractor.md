@@ -13,19 +13,22 @@ Your job is to produce template-ready JSON artifacts from a Decidalo UserID. You
 Use these project-local skills:
 - `$enrich-information` for enriching project metadata via `skills/enrich-information/scripts/enrich_projects.py`
 - `$map-profile` for mapping Decidalo JSON via `skills/map-profile/scripts/map_profile_to_template.py`
+- `$fetch-blob` for decoding the candidate picture downloaded from blob storage via `skills/fetch-blob/scripts/save_blob.py`
 
 Do not write ad-hoc transformation scripts. Use the bundled scripts from the skills.
 
 ## Workflow
 
-1. Require a Decidalo UserID.
-   - If the user provided only a name, ask for the UserID unless a Decidalo MCP search tool can unambiguously resolve it.
-   - If multiple people match, ask the user to confirm the correct UserID.
+1. Resolve the Decidalo UserID. The user may give **either a UserID or a person's name**.
+   - If they gave a name (not a numeric UserID), call the `get_profile_name_mapping` MCP tool (`mcp__claude_ai_Decidalo__get_profile_name_mapping` in cloud, `mcp__decidalo_api_wrapper__get_profile_name_mapping` locally) and look up the matching UserID.
+   - If the name is ambiguous (multiple matches) or not found, show the candidates and ask the user to confirm the correct UserID.
+   - If they gave a numeric UserID, use it directly.
 
 2. Fetch the full profile from Decidalo MCP by UserID.
    - First inspect available Decidalo MCP tools if needed.
    - Use the profile/detail tool that returns full structured profile data.
-   - Preserve the profile picture signed URL from the profile tool result when present; `$map-profile` maps common picture URL fields to `CandidatePicture`.
+
+   The profile picture is **no longer taken from a Decidalo signed URL** — it lives in blob storage and is fetched in step 6.
 
 3. Save the raw profile JSON:
 
@@ -43,7 +46,7 @@ output/<user_id>_profile_raw.json
      --list-pending
    ```
 
-   b. For each ID in the returned JSON array, call the `get_project` MCP tool (`mcp__claude_ai_Decidalo__get_project` in cloud, `mcp__decidalo__get_project` locally) with `project_id`.
+   b. For each ID in the returned JSON array, call the `get_project` MCP tool (`mcp__claude_ai_Decidalo__get_project` in cloud, `mcp__decidalo_api_wrapper__get_project` locally) with `project_id`.
 
    c. Write the responses to `output/<user_id>_project_details.json`, keyed by project ID:
    `{ "<project_id>": <get_project response>, ... }`.
@@ -67,7 +70,19 @@ python3 skills/map-profile/scripts/map_profile_to_template.py \
   --output output/<user_id>_template_data.json
 ```
 
-6. If the profile picture signed URL was returned separately from the raw profile payload, add it to `output/<user_id>_template_data.json` as top-level `CandidatePicture` and inside `CV[0].CandidatePicture`.
+6. Fetch the candidate picture from blob storage and set it as a local path:
+   - Call `list_image_blobs` (cloud: `mcp__claude_ai_Decidalo__list_image_blobs`, local: `mcp__decidalo_api_wrapper__list_image_blobs`) and pick the blob whose name starts with `"<user_id>/"` (e.g. `"<user_id>/photo.jpg"`).
+   - Call `download_image_blob("<user_id>/photo.jpg")`, save the returned base64 content to `output/<user_id>_image_blob.b64`, and decode it with `$fetch-blob`:
+
+   ```bash
+   python3 skills/fetch-blob/scripts/save_blob.py \
+     --input output/<user_id>_image_blob.b64 \
+     --output output/<user_id>_candidate_picture.jpg
+   ```
+
+   (Match the output extension to the blob's extension.)
+   - Add that local path to `output/<user_id>_template_data.json` as top-level `CandidatePicture` and inside `CV[0].CandidatePicture`.
+   - If no image blob exists for the user (or its bytes cannot be captured), leave `CandidatePicture` unset and report it as missing — the pipeline still completes.
 
 7. Write a small manifest:
 

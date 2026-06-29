@@ -17,12 +17,12 @@ Prefer those contracts. Do not recreate their scripts or write temporary transfo
 ## End-to-End Workflow
 
 1. **Collect inputs upfront.**
-   - Require a Decidalo UserID.
+   - Require a Decidalo **UserID or a person's name**. If a name is given, resolve it to a UserID with the `get_profile_name_mapping` MCP tool (ask the user to disambiguate if there are multiple matches).
    - Ask whether there is a **target customer** for this CV. If the user provides one, note the company name — it will be used in the tailoring step. If they say no or skip the question, proceed without tailoring.
 
 2. **Follow the `profile-information-extractor` workflow:**
    - Fetch the full profile by UserID from Decidalo MCP.
-   - Preserve the candidate profile picture signed URL when the MCP profile tool returns it.
+   - Fetch the candidate picture from blob storage (`list_image_blobs` → `download_image_blob` → decode with `$fetch-blob`) and set its local path as `CandidatePicture` in the mapped JSON.
    - Save `output/<user_id>_profile_raw.json`.
    - Use `$enrich-information` to create `output/<user_id>_profile_enriched.json` (enrichment data is fetched via the `get_project` MCP tool — no API key needed; see the skill for the list-pending → get_project → merge flow).
    - Use `$map-profile` to create `output/<user_id>_template_data.json`.
@@ -40,10 +40,10 @@ Prefer those contracts. Do not recreate their scripts or write temporary transfo
    - Write the result to `output/<user_id>_template_data_<customer_slug>_standardized.json` or `output/<user_id>_template_data_standardized.json`.
 
 5. **Follow the `project-filler` workflow:**
-   - Ask whether the user wants `templates/Sales Profil - mit Name.docx` or `templates/Sales Profil - anonym.docx` if not specified.
-   - If the chosen template file does not exist under `templates/`, stop and ask the user to install it first with the `$setup-templates` skill (or `/setup-templates`). The templates are not shipped with the plugin.
+   - Ask whether the user wants the named (`Sales Profil - mit Name.docx`) or anonymised (`Sales Profil - anonym.docx`) version if not specified.
+   - Fetch the chosen template from blob storage: `list_template_blobs` → `download_template_blob` → decode with `$fetch-blob` to a local `.docx`. Use that path as `--template`. (A locally installed template via `$setup-templates` works as an offline fallback.)
    - Use `$fill-template` with the standardized template data file.
-   - Pass `--candidate-picture` if the signed URL was only available from MCP and not in the mapped JSON.
+   - Pass `--candidate-picture` (local image path) if the picture was not already set in the mapped JSON.
    - Save the `.docx` in `output/`.
 
 6. **Report all generated artifact paths.**

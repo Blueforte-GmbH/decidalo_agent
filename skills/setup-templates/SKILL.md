@@ -1,14 +1,18 @@
 ---
 name: setup-templates
-description: Install the Decidalo Sales Profile Word templates into the local templates/ folder. Use after installing the plugin, or whenever the fill step reports that templates/Sales Profil - mit Name.docx or templates/Sales Profil - anonym.docx is missing. Takes the user's own .docx template files (by path) and copies them under the canonical names the fill-template step expects.
+description: Install Decidalo Sales Profile Word templates into the local templates/ folder as an OFFLINE FALLBACK. Templates normally come from blob storage via the decidalo_api_wrapper MCP server (list_template_blobs / download_template_blob + $fetch-blob); use this skill only when blob access is unavailable or to pin a custom local copy. Takes the user's own .docx files (by path) and copies them under the canonical names the fill-template step expects.
 ---
 
 # Setup Templates
 
+> **Note:** Templates are normally fetched from blob storage at fill time via the
+> `decidalo_api_wrapper` MCP server (`list_template_blobs` / `download_template_blob`,
+> decoded with `$fetch-blob`). This skill is an **offline fallback** for installing
+> a local copy when blob access is unavailable.
+
 The Sales Profile Word templates are company IP and are **not** shipped with the
-plugin. Each user installs their own template files locally once. This skill copies
-the user-provided `.docx` files into `./templates/` under the canonical names the
-fill step expects:
+plugin. This skill copies the user-provided `.docx` files into `./templates/`
+under the canonical names the fill step expects:
 
 - `templates/Sales Profil - mit Name.docx` — named version
 - `templates/Sales Profil - anonym.docx` — anonymised version

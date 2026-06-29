@@ -29,7 +29,7 @@ The flow is: ask the script which projects are still missing data → fetch each
 
 2. **Fetch each pending project via the `get_project` MCP tool.** Call the Decidalo
    `get_project` tool once per ID (cloud: `mcp__claude_ai_Decidalo__get_project`, local:
-   `mcp__decidalo__get_project`), passing `project_id`.
+   `mcp__decidalo_api_wrapper__get_project`), passing `project_id`.
 
 3. **Collect the responses into a details file** at `output/<user_id>_project_details.json`,
    keyed by project ID. Each value is the raw `get_project` result (a JSON object or a

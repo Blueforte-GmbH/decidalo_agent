@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "decidalo": {
-      "type": "sse",
-      "url": "https://decidalo-api-wrapper.wittytree-471eb8b2.northeurope.azurecontainerapps.io/sse"
+    "decidalo_api_wrapper": {
+      "type": "http",
+      "url": "https://decidalo-api-wrapper.wittytree-471eb8b2.northeurope.azurecontainerapps.io/"
     }
   }
 }
