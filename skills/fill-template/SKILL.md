@@ -20,7 +20,7 @@ pass that path to `--template`.
 List fields when debugging a template:
 
 ```bash
-bin/py.sh skills/fill-template/scripts/fill_template.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/fill-template/scripts/fill_template.py \
   --list-fields \
   --template "templates/Sales Profil - mit Name.docx"
 ```
@@ -28,7 +28,7 @@ bin/py.sh skills/fill-template/scripts/fill_template.py \
 Fill the selected template:
 
 ```bash
-bin/py.sh skills/fill-template/scripts/fill_template.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/fill-template/scripts/fill_template.py \
   --template "templates/Sales Profil - mit Name.docx" \
   --profile output/<user_id>_template_data.json \
   --output "output/<Nachname>_<Vorname>_Salesprofil.docx"
@@ -42,7 +42,7 @@ fetch the image from blob storage with `$fetch-blob` (`list_image_blobs` →
 modifying the raw profile artifact:
 
 ```bash
-bin/py.sh skills/fill-template/scripts/fill_template.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/fill-template/scripts/fill_template.py \
   --template "templates/Sales Profil - mit Name.docx" \
   --profile output/<user_id>_template_data.json \
   --candidate-picture "output/<user_id>_candidate_picture.jpg" \

@@ -20,7 +20,7 @@ the canonical names the fill step expects:
 You can also run the bundled script directly:
 
 ```bash
-python3 skills/setup-templates/scripts/install_templates.py \
+python3 "${CLAUDE_PLUGIN_ROOT:-.}"/skills/setup-templates/scripts/install_templates.py \
   --named "/path/to/named template.docx" \
   --anonymous "/path/to/anonymous template.docx"
 ```

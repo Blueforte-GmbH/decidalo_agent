@@ -31,7 +31,7 @@ candidate's real name; the anonymised one does not.
 2. Run the bundled script to validate and copy the file(s) into `./templates/`:
 
 ```bash
-python3 skills/setup-templates/scripts/install_templates.py \
+python3 "${CLAUDE_PLUGIN_ROOT:-.}"/skills/setup-templates/scripts/install_templates.py \
   --named "/path/to/the/named template.docx" \
   --anonymous "/path/to/the/anonymous template.docx"
 ```

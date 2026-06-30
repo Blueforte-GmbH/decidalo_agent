@@ -12,7 +12,7 @@ Use the bundled script to transform Decidalo profile JSON into the data structur
 Run from the working directory:
 
 ```bash
-bin/py.sh skills/map-profile/scripts/map_profile_to_template.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/map-profile/scripts/map_profile_to_template.py \
   --profile output/<user_id>_profile_enriched.json \
   --output output/<user_id>_template_data.json
 ```

@@ -19,7 +19,7 @@ The flow is: ask the script which projects are still missing data → fetch each
    `projectReferenceId`s (projects missing a title or industry) on stdout:
 
    ```bash
-   bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
+   "${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
      --profile output/<user_id>_profile_raw.json \
      --list-pending
    ```
@@ -42,7 +42,7 @@ The flow is: ask the script which projects are still missing data → fetch each
 4. **Merge the fetched data into the profile:**
 
    ```bash
-   bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
+   "${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
      --profile output/<user_id>_profile_raw.json \
      --details output/<user_id>_project_details.json \
      --output output/<user_id>_profile_enriched.json

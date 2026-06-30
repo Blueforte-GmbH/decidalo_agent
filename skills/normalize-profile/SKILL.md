@@ -27,7 +27,7 @@ normalization code per run.**
 3. Normalize to the canonical raw profile:
 
 ```bash
-bin/py.sh skills/normalize-profile/scripts/normalize_profile.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/normalize-profile/scripts/normalize_profile.py \
   --input output/<user_id>_profile_mcp.json \
   --output output/<user_id>_profile_raw.json
 ```

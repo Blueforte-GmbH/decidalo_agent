@@ -30,10 +30,12 @@ A bare `python3 skills/…` is non-deterministic: depending on context (main thr
 Every dep-requiring script is therefore invoked through the launcher [bin/py.sh](bin/py.sh), which forces a deterministic interpreter *with* the requirements:
 
 ```bash
-bin/py.sh skills/<skill>/scripts/<script>.py …    # instead of: python3 skills/…
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/<skill>/scripts/<script>.py …    # instead of: python3 skills/…
 ```
 
-It prefers a cached `uv` environment when `uv` is on PATH (typical local CLI), and otherwise bootstraps a project-local `.venv` (typical Cowork cloud — a fresh venv is not "externally-managed", so `pip` works there despite PEP 668). No global `pip install` is needed. Agents and SKILL.md examples must keep using `bin/py.sh` for these scripts.
+**Always prefix the launcher with `"${CLAUDE_PLUGIN_ROOT:-.}"` — never call a bare relative `bin/py.sh` or `python3 skills/…`.** This is *the* fix for the recurring "subagent can't find the script" failure: when the plugin is installed (the normal case, and all of Cowork cloud), the bundled `bin/`, `skills/`, and `agents/` live in the plugin install directory, but subagents run with the cwd set to the *user's project*, not the plugin root — so a bare `skills/…` or `bin/py.sh` path does not exist there. `CLAUDE_PLUGIN_ROOT` is set by Claude Code to the plugin's own directory; the `:-.` fallback makes the same line also work in local repo dev (where the var is unset and cwd *is* the repo root). The script-path argument may stay relative (`skills/…`): `bin/py.sh` resolves a relative first argument against its own root, so only the launcher itself needs the prefix.
+
+It prefers a cached `uv` environment when `uv` is on PATH (typical local CLI), and otherwise bootstraps a project-local `.venv` (typical Cowork cloud — a fresh venv is not "externally-managed", so `pip` works there despite PEP 668). No global `pip install` is needed. Agents and SKILL.md examples must keep using `"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh` for these scripts.
 
 **Exception — the three pure-stdlib scripts stay on `python3`:** `list_rules.py`, `scaffold_rule.py`, and `install_templates.py` import only the standard library. `install_templates.py` in particular backs the *offline* `/setup-templates` fallback, so it must never be routed through a launcher that could attempt a `pip install`.
 
@@ -58,7 +60,7 @@ The `.docx` templates are company IP and are **not** shipped in the repo (`templ
 As an **offline fallback**, you can still install your own copies locally with `/setup-templates`, or directly:
 
 ```bash
-python3 skills/setup-templates/scripts/install_templates.py \
+python3 "${CLAUDE_PLUGIN_ROOT:-.}"/skills/setup-templates/scripts/install_templates.py \
   --named "/path/to/named template.docx" \
   --anonymous "/path/to/anonymous template.docx"
 ```
@@ -69,7 +71,7 @@ This copies the files into `templates/` under the canonical names the fill step 
 
 List all MERGEFIELD names in a template:
 ```bash
-bin/py.sh skills/fill-template/scripts/fill_template.py --list-fields --template "templates/Sales Profil - mit Name.docx"
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/fill-template/scripts/fill_template.py --list-fields --template "templates/Sales Profil - mit Name.docx"
 ```
 
 Run the three steps manually:
@@ -77,22 +79,22 @@ Run the three steps manually:
 # 1. Enrich project metadata — data comes from the get_project MCP tool, so this is
 #    two script calls around the MCP fetch (no API key in the script):
 #    a) list which projects need data
-bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
   --profile output/<user_id>_profile_raw.json --list-pending
 #    b) call get_project for each ID, save responses to output/<user_id>_project_details.json,
 #       then merge:
-bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
   --profile output/<user_id>_profile_raw.json \
   --details output/<user_id>_project_details.json \
   --output output/<user_id>_profile_enriched.json
 
 # 2. Map to template-ready JSON
-bin/py.sh skills/map-profile/scripts/map_profile_to_template.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/map-profile/scripts/map_profile_to_template.py \
   --profile output/<user_id>_profile_enriched.json \
   --output output/<user_id>_template_data.json
 
 # 3. Fill Word template
-bin/py.sh skills/fill-template/scripts/fill_template.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/fill-template/scripts/fill_template.py \
   --template "templates/Sales Profil - mit Name.docx" \
   --profile output/<user_id>_template_data.json \
   --output "output/<Nachname>_<Vorname>_Salesprofil.docx"

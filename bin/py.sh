@@ -12,12 +12,27 @@
 #      Ein frisch erzeugtes venv ist NICHT "externally-managed", daher läuft
 #      `pip` darin trotz PEP 668.
 #
-# Aufruf (relativ zum Repo-/Plugin-Root, wie die Skill-Pfade selbst):
-#   bin/py.sh skills/fetch-blob/scripts/download_url.py --url … --output …
+# Aufruf (Launcher selbst über ${CLAUDE_PLUGIN_ROOT:-.}/bin/py.sh ansprechen;
+# das Skript-Argument darf relativ zum Repo-/Plugin-Root bleiben):
+#   "${CLAUDE_PLUGIN_ROOT:-.}/bin/py.sh" skills/fetch-blob/scripts/download_url.py --url … --output …
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REQ="$ROOT/requirements.txt"
+
+# Skript-Pfad robust auflösen: ein relativer erster Parameter wird gegen ROOT
+# (= Verzeichnis dieses Launchers/..) aufgelöst, falls er dort existiert. So
+# findet py.sh die gebündelten Skripte unabhängig vom aktuellen cwd — wichtig
+# im installierten Plugin, wo cwd das Projekt des Nutzers ist, nicht der
+# Plugin-Root. Absolute oder bereits cwd-relativ existierende Pfade bleiben.
+if [ "$#" -gt 0 ]; then
+  script="$1"; shift
+  case "$script" in
+    /*) : ;;                                         # absolut -> unverändert
+    *) if [ ! -f "$script" ] && [ -f "$ROOT/$script" ]; then script="$ROOT/$script"; fi ;;
+  esac
+  set -- "$script" "$@"
+fi
 
 # 1. uv-Pfad: schnell, gecacht, PEP-668-immun.
 if command -v uv >/dev/null 2>&1; then

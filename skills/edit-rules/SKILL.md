@@ -62,7 +62,7 @@ will refuse them. A rule must reshape existing text only, never invent content.
 2. Scaffold the file with the correct numeric prefix and structure:
 
 ```bash
-python3 skills/edit-rules/scripts/scaffold_rule.py \
+python3 "${CLAUDE_PLUGIN_ROOT:-.}"/skills/edit-rules/scripts/scaffold_rule.py \
   --title "Datumsformat vereinheitlichen" \
   --fields "Projects[*].Duration" \
   --requirement "..." \

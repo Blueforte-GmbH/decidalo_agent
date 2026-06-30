@@ -21,7 +21,7 @@ Do not write ad-hoc transformation scripts — use these bundled scripts.
 1. **List the projects still missing a title/industry:**
 
 ```bash
-bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
   --profile output/<user_id>_profile_raw.json \
   --list-pending
 ```
@@ -37,7 +37,7 @@ bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
 4. **Merge** them into the enriched profile:
 
 ```bash
-bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
   --profile output/<user_id>_profile_raw.json \
   --details output/<user_id>_project_details.json \
   --output output/<user_id>_profile_enriched.json
@@ -48,7 +48,7 @@ bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
 5. **Map** the enriched profile to template-ready JSON:
 
 ```bash
-bin/py.sh skills/map-profile/scripts/map_profile_to_template.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/map-profile/scripts/map_profile_to_template.py \
   --profile output/<user_id>_profile_enriched.json \
   --output output/<user_id>_template_data.json
 ```

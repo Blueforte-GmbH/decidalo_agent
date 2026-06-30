@@ -35,7 +35,7 @@ Cloud names are `mcp__claude_ai_Decidalo__*`; local CLI names are
 3. Extract the SAS URL from the response and download it immediately:
 
 ```bash
-bin/py.sh skills/fetch-blob/scripts/download_url.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/fetch-blob/scripts/download_url.py \
   --url "<sas-url-from-get_template_download_url>" \
   --output "templates/Sales Profil - mit Name.docx"
 ```
@@ -53,7 +53,7 @@ SAS URL tool is unavailable.
 3. Download it immediately, matching the blob's extension:
 
 ```bash
-bin/py.sh skills/fetch-blob/scripts/download_url.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/fetch-blob/scripts/download_url.py \
   --url "<sas-url-from-get_image_download_url>" \
   --output output/<user_id>_candidate_picture.jpg
 ```
@@ -65,7 +65,7 @@ Use `download_image_blob` + `save_blob.py` only as a legacy fallback if the SAS
 URL tool is unavailable:
 
 ```bash
-bin/py.sh skills/fetch-blob/scripts/save_blob.py \
+"${CLAUDE_PLUGIN_ROOT:-.}"/bin/py.sh skills/fetch-blob/scripts/save_blob.py \
   --input output/<user_id>_image_blob.b64 \
   --output output/<user_id>_candidate_picture.jpg
 ```

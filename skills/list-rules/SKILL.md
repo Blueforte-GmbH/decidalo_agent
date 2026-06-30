@@ -13,7 +13,7 @@ free-text fields of a Sales Profile. This skill gives an overview of those rules
 1. Run the bundled script to scan the `rules/` folder:
 
 ```bash
-python3 skills/list-rules/scripts/list_rules.py
+python3 "${CLAUDE_PLUGIN_ROOT:-.}"/skills/list-rules/scripts/list_rules.py
 ```
 
 It prints, per rule file:
