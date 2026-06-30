@@ -3,9 +3,8 @@
 Download an HTTPS/SAS URL to a local file.
 
 Used for Word templates returned by the wrapper's `get_template_download_url`
-tool, and also usable for candidate pictures when a signed image URL is the
-available source. Signed Azure SAS URLs are short-lived, so fetch a fresh URL
-and run this immediately.
+tool and for candidate pictures returned by `get_image_download_url`. Signed
+Azure SAS URLs are short-lived, so fetch a fresh URL and run this immediately.
 """
 
 import sys

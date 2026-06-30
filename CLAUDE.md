@@ -25,7 +25,7 @@ pip install -r requirements.txt   # lxml, click, requests
 
 The Decidalo MCP server is configured in `.mcp.json` — an Azure Container App wrapper (`decidalo-api-wrapper…northeurope.azurecontainerapps.io/`, **Streamable HTTP** transport, `type: "http"`) that holds the Decidalo Import API token **server-side**. The wrapper itself is an **OAuth-protected resource** (`/.well-known/oauth-protected-resource`, scope `mcp.access`, dynamic client registration), so the MCP client must complete an OAuth flow on first connect — the client handles registration and the browser login automatically; check status with `/mcp`. No Decidalo Import API key is needed client-side (that token stays server-side); the OAuth login gates access to the wrapper.
 
-**MCP tool naming + runtime gotcha (read this before debugging "tool not found"):** the wrapper's tools are `get_profile_name_mapping`, `get_project`, `list_image_blobs`, `download_image_blob`, `list_template_blobs`, `download_template_blob`.
+**MCP tool naming + runtime gotcha (read this before debugging "tool not found"):** the wrapper's tools are `get_profile_name_mapping`, `get_project`, `list_image_blobs`, `get_image_download_url`, `download_image_blob`, `list_template_blobs`, `get_template_download_url`, `download_template_blob`.
 
 ⚠️ `mcp__claude_ai_Decidalo__*` is **NOT** the wrapper — it is a *separate, official* Decidalo connector (profile/catalog/candidates/resource-plan/CV-export tools, ~14 of them). Its `profile` and `search_catalog` tools overlap enough to fetch a profile and resolve a name, but it has **no** `get_project` and **no** blob tools. So `profile-fetcher` deliberately uses this official connector for the profile, while the wrapper does name mapping, `get_project`, and blobs.
 
@@ -114,7 +114,7 @@ The export is split into **single-responsibility sub-agents** in `agents/`, chai
 - `project-enricher` — enriches project title/description/industry via the wrapper `get_project` tool (`$enrich-information`), then maps to template-ready JSON (`$map-profile`); writes `output/<user_id>_profile_enriched.json` and `output/<user_id>_template_data.json`.
 - `cv-tailoring` — *optional*; researches a target customer via web search and rewrites free-text fields in the mapped JSON; writes `output/<user_id>_template_data_<customer_slug>.json`.
 - `cv-standardizer` — applies formatting/content rules from `rules/` to the most recent template data JSON; writes `output/<user_id>_template_data_*_standardized.json`.
-- `profile-image-fetcher` — UserID → candidate picture via the wrapper `download_image_blob` (+ `$fetch-blob`); returns a local image path. Runs right before `project-filler`.
+- `profile-image-fetcher` — UserID → candidate picture via the wrapper `get_image_download_url` (SAS URL, downloaded with `$fetch-blob`'s `download_url.py`); returns a local image path. Runs right before `project-filler`.
 - `project-filler` — fetches the Word template from blob storage (`download_template_blob` + `$fetch-blob`), calls `$fill-template` on the standardized JSON, passes the picture via `--candidate-picture`; writes `.docx`.
 
 Which MCP server each agent uses: **wrapper** (`decidalo_api_wrapper`) for name mapping, `get_project`, and blob downloads; **official** Decidalo connector (`mcp__claude_ai_Decidalo__*`) for the profile itself.
@@ -137,7 +137,7 @@ The `/setup-templates` command installs the `.docx` templates into `templates/` 
 - **Scalar fields**: `«MERGEFIELD FieldName»` — e.g. `CandidateName`, `CandidatePosition`
 - **List ranges**: a `RangeStart:ListName` marker and a `RangeEnd:ListName` marker bracket template blocks that get cloned once per list item
 - **Nested ranges**: e.g. `Skills` inside `Projects` — expanded recursively
-- **Candidate picture**: the placeholder text `@@CandidatePicture@@` in a paragraph is replaced by an embedded image. `CandidatePicture` is now a **local image path** (downloaded from the `profile-images` blob container via `download_image_blob` and decoded with the `fetch-blob` skill); `load_image_source` in `fill_template.py` also still accepts `data:` and HTTPS URLs.
+- **Candidate picture**: the placeholder text `@@CandidatePicture@@` in a paragraph is replaced by an embedded image. `CandidatePicture` is now a **local image path** (downloaded from the `profile-images` blob container via the `get_image_download_url` SAS URL and the `fetch-blob` skill); `load_image_source` in `fill_template.py` also still accepts `data:` and HTTPS URLs.
 
 ## Template data structure
 
@@ -180,7 +180,7 @@ The agent orchestrates the loop (list → get_project per ID → save to `output
 Beyond profile/enrichment data, the `decidalo_api_wrapper` MCP server exposes:
 
 - **`get_profile_name_mapping`** — resolves a person's name to a Decidalo UserID, so users can ask for a CV by name instead of ID. The agent disambiguates multiple matches with the user.
-- **`list_image_blobs` / `download_image_blob(blob_name)`** — candidate pictures in the `profile-images` container, pathed by id (e.g. `"<user_id>/photo.jpg"`). `download_image_blob` returns the image bytes (base64).
+- **`list_image_blobs` / `get_image_download_url(blob_name)`** — candidate pictures in the `profile-images` container, pathed by id (e.g. `"<user_id>/photo.jpg"`). `get_image_download_url` returns a short-lived (~15 min) SAS URL; download it immediately with `$fetch-blob`'s `download_url.py`. (`download_image_blob` returning base64 bytes remains as a legacy fallback.)
 - **`list_template_blobs` / `download_template_blob(blob_name)`** — Word templates in the `templates` container (e.g. `"Sales Profil - mit Name.docx"`). `download_template_blob` returns `{name, encoding, size, content}` (base64 for the binary `.docx`).
 
 These blob downloads come back as **text** (base64/JSON), so the agent saves the response and decodes it to a real local file with the **`fetch-blob` skill** (`skills/fetch-blob/scripts/save_blob.py`) before passing the path to `$fill-template` (`--template` / `--candidate-picture`). Agents cannot write binary directly with the Write tool — always route blob bytes through `fetch-blob`.
@@ -193,8 +193,8 @@ output/<user_id>_profile_raw.json                                  ← normalize
 output/<user_id>_project_details.json                              ← raw get_project responses, keyed by ID (enrichment input)
 output/<user_id>_profile_enriched.json                             ← project titles/industries added
 output/<user_id>_template_data.json                                ← mapped, ready for standardizer
-output/<user_id>_image_blob.b64                                    ← raw download_image_blob payload (decode input)
-output/<user_id>_candidate_picture.<ext>                           ← candidate picture decoded from blob storage
+output/<user_id>_image_blob.b64                                    ← raw download_image_blob payload (legacy fallback decode input)
+output/<user_id>_candidate_picture.<ext>                           ← candidate picture downloaded from the get_image_download_url SAS URL
 output/<user_id>_template_blob.json                                ← raw download_template_blob response (decode input)
 output/<user_id>_template_data_<customer_slug>.json                ← customer-tailored copy (optional)
 output/<user_id>_template_data_standardized.json                   ← after standardizer, no tailoring

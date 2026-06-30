@@ -24,7 +24,9 @@ Cloud names are `mcp__claude_ai_Decidalo__*`; local CLI names are
 - `download_template_blob(blob_name)` → `{ "name", "encoding": "utf-8"|"base64", "size", "content" }`.
 - `list_image_blobs` → image blob names in the `profile-images` container,
   pathed by profile id, e.g. `"<user_id>/photo.jpg"`.
-- `download_image_blob(blob_name)` → the image bytes (base64).
+- `get_image_download_url(blob_name)` → a short-lived SAS URL for the candidate
+  picture. The URL is valid for ~15 minutes.
+- `download_image_blob(blob_name)` → the image bytes (base64). Legacy fallback.
 
 ## Download a template blob through SAS URL
 
@@ -43,23 +45,30 @@ Pass that `--output` path to `$fill-template` as `--template`.
 Use `download_template_blob` + `save_blob.py` only as a legacy fallback if the
 SAS URL tool is unavailable.
 
-## Decode a candidate image blob
+## Download a candidate image through SAS URL
 
 1. Pick the right blob from `list_image_blobs` — the one whose name starts with
    `"<user_id>/"`.
-2. Call `download_image_blob("<user_id>/photo.jpg")` and save its base64 content
-   (or the `data:<mime>;base64,...` form) to a file, e.g.
-   `output/<user_id>_image_blob.b64`.
-3. Decode it to a local image, matching the blob's extension:
+2. Call `get_image_download_url("<user_id>/photo.jpg")` and extract the SAS URL.
+3. Download it immediately, matching the blob's extension:
+
+```bash
+python3 skills/fetch-blob/scripts/download_url.py \
+  --url "<sas-url-from-get_image_download_url>" \
+  --output output/<user_id>_candidate_picture.jpg
+```
+
+Pass that path to `$fill-template` as `--candidate-picture`, or set it as
+`CandidatePicture` in the mapped JSON.
+
+Use `download_image_blob` + `save_blob.py` only as a legacy fallback if the SAS
+URL tool is unavailable:
 
 ```bash
 python3 skills/fetch-blob/scripts/save_blob.py \
   --input output/<user_id>_image_blob.b64 \
   --output output/<user_id>_candidate_picture.jpg
 ```
-
-Pass that path to `$fill-template` as `--candidate-picture`, or set it as
-`CandidatePicture` in the mapped JSON.
 
 ## Notes
 
