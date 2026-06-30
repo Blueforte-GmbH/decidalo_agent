@@ -360,6 +360,24 @@ def get_all_field_names(paragraph: etree._Element) -> list[str]:
     return names
 
 
+def _set_run_value(run: etree._Element, value: str) -> None:
+    """Populate a run's text content, turning '\\n' into Word line breaks (<w:br/>).
+
+    A literal newline inside a single <w:t> is collapsed by Word, so multi-line
+    values (e.g. bullet-point descriptions) must be split into alternating
+    <w:t>/<w:br/> children. Run properties (rPr) are preserved; only existing
+    text/break nodes are removed before repopulating."""
+    for child in list(run):
+        if child.tag in (w("t"), w("br"), w("cr")):
+            run.remove(child)
+    for i, line in enumerate(value.split("\n")):
+        if i > 0:
+            etree.SubElement(run, w("br"))
+        t_elem = etree.SubElement(run, w("t"))
+        t_elem.text = line
+        t_elem.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+
+
 def _write_display(
     begin_run: etree._Element,
     sep_run: etree._Element | None,
@@ -373,21 +391,13 @@ def _write_display(
             new_run.remove(fc)
         for instr in list(new_run.findall(w("instrText"))):
             new_run.remove(instr)
-        t_elem = etree.SubElement(new_run, w("t"))
-        t_elem.text = value
-        if " " in value:
-            t_elem.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+        _set_run_value(new_run, value)
         parent = sep_run.getparent()
         if parent is not None:
             parent.insert(list(parent).index(sep_run) + 1, new_run)
     elif display_runs:
         first = display_runs[0]
-        t_elem = first.find(w("t"))
-        if t_elem is None:
-            t_elem = etree.SubElement(first, w("t"))
-        t_elem.text = value
-        if " " in value:
-            t_elem.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+        _set_run_value(first, value)
         for extra in display_runs[1:]:
             p = extra.getparent()
             if p is not None:
@@ -402,10 +412,7 @@ def set_fld_simple_value(paragraph: etree._Element, field_name: str, value: str)
             for child in list(elem):
                 elem.remove(child)
             new_run = etree.SubElement(elem, w("r"))
-            t_elem = etree.SubElement(new_run, w("t"))
-            t_elem.text = value
-            if " " in value:
-                t_elem.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+            _set_run_value(new_run, value)
 
 
 def fill_paragraph(paragraph: etree._Element, data: dict) -> None:
