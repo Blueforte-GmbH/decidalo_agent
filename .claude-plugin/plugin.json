@@ -1,6 +1,6 @@
 {
   "name": "decidalo-agent",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "displayName": "Decidalo Sales Profile Agent",
   "description": "Decidalo Sales Profile export pipeline — fetches IT-consultant profiles from the Decidalo platform, enriches project metadata, optionally tailors text to a target customer, standardizes formatting, and renders Word .docx Sales Profile templates.",
   "keywords": ["decidalo", "sales-profile", "cv", "word", "staffing", "blueforte"],
