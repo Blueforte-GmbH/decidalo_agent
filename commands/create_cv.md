@@ -1,21 +1,39 @@
 ---
-description: Export a Decidalo Sales Profile as a Word .docx file — fetches the profile, enriches project data, optionally tailors it to a target customer, and fills the Word template.
+description: Export a Decidalo Sales Profile as a Word .docx file — resolves the name, fetches & enriches the profile, optionally tailors it to a target customer, standardizes formatting, fetches the photo, and fills the Word template.
 ---
 
-Trigger the split Decidalo Sales Profile export flow.
+Orchestrate the Decidalo Sales Profile export end-to-end. You (the main thread) run the chain and spawn each specialized sub-agent in sequence. Handle every user-facing question yourself — sub-agents cannot ask the user.
 
-If the user provided a UserID, a person's name, or other context after the slash command, pass it as part of the task. Otherwise ask the user for the Decidalo UserID or name first.
+UserID or person name (and any other context the user typed): $ARGUMENTS
 
-Invoke the `profile-export` subagent with the following prompt, substituting $ARGUMENTS with any text the user typed after the command:
+## Collect inputs upfront
 
----
+- Require a Decidalo **UserID or a person's name**. If neither was given, ask for it.
+- Ask whether there is a **target customer** for this CV (for optional tailoring). If yes, note the company name; if no, skip tailoring.
+- Ask whether the user wants the **named** (`Sales Profil - mit Name.docx`) or **anonymised** (`Sales Profil - anonym.docx`) version. Do not assume a default.
 
-Generate a Sales Profile Word document for the following Decidalo UserID or person name (if specified): $ARGUMENTS
+## Pipeline (spawn one sub-agent per step)
 
-Follow the split profile-export workflow:
-1. Use `profile-information-extractor` behavior to fetch the Decidalo profile. If a name was given instead of a UserID, resolve it first with the `get_profile_name_mapping` MCP tool.
-2. Save raw, enriched, mapped, and manifest JSON artifacts in `output/` (the candidate picture is fetched from blob storage and stored locally)
-3. Ask the user whether they want the anonymised version or the version with name
-4. Use `project-filler` behavior to fetch the matching template from blob storage and fill it from `output/<user_id>_template_data.json`
-5. Save the generated `.docx` in `output/`
-6. Report all generated artifact paths and any fields that had no data
+1. **`profile-name-resolver`** — only if a name was given (not a numeric UserID). Pass the name; get back the UserID. If it reports multiple matches, ask the user to disambiguate before continuing.
+
+2. **`profile-fetcher`** — pass the UserID. Produces `output/<user_id>_profile_raw.json`.
+
+3. **`project-enricher`** — pass the UserID / raw file path. Enriches via `get_project` and maps to `output/<user_id>_template_data.json` (also writes `output/<user_id>_profile_enriched.json`).
+
+4. **`cv-tailoring`** *(only if a target customer was provided)* — adapts free-text fields in `output/<user_id>_template_data.json`; writes `output/<user_id>_template_data_<customer_slug>.json`. Skip this step entirely if there is no target customer.
+
+5. **`cv-standardizer`** — applies the `rules/` to the most recent template data file (tailored if present, else base); writes `output/<user_id>_template_data_<customer_slug>_standardized.json` or `output/<user_id>_template_data_standardized.json`.
+
+6. **`profile-image-fetcher`** — pass the UserID. Returns the local candidate-picture path (or reports none available).
+
+7. **`project-filler`** — pass the standardized template data file, the chosen template version (named/anonymised), and the candidate-picture path from step 6 (as `--candidate-picture`). Produces `output/<Nachname>_<Vorname>_Salesprofil.docx`.
+
+## Report
+
+List all generated artifact paths (raw, enriched, mapped, tailored, standardized, picture, `.docx`) and any fields that had no data (e.g. missing project titles, no candidate picture).
+
+## Hard rules
+
+- Use only the bundled scripts in `skills/*/scripts/` (via the sub-agents). No ad-hoc transformation code.
+- Never modify `output/<user_id>_template_data.json` in place — the tailored copy is always a separate file.
+- Do not pass raw Decidalo JSON to the Word filler.

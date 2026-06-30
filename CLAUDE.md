@@ -25,14 +25,16 @@ pip install -r requirements.txt   # lxml, click, requests
 
 The Decidalo MCP server is configured in `.mcp.json` — an Azure Container App wrapper (`decidalo-api-wrapper…northeurope.azurecontainerapps.io/`, **Streamable HTTP** transport, `type: "http"`) that holds the Decidalo Import API token **server-side**. The wrapper itself is an **OAuth-protected resource** (`/.well-known/oauth-protected-resource`, scope `mcp.access`, dynamic client registration), so the MCP client must complete an OAuth flow on first connect — the client handles registration and the browser login automatically; check status with `/mcp`. No Decidalo Import API key is needed client-side (that token stays server-side); the OAuth login gates access to the wrapper.
 
-**MCP tool naming gotcha:** the wrapper's tools (`get_profile_name_mapping`, `get_project`, `list_image_blobs`, `download_image_blob`, `list_template_blobs`, `download_template_blob`) are exposed under a prefix derived from the server name, which differs by environment:
+**MCP tool naming + runtime gotcha (read this before debugging "tool not found"):** the wrapper's tools are `get_profile_name_mapping`, `get_project`, `list_image_blobs`, `download_image_blob`, `list_template_blobs`, `download_template_blob`.
 
-- **Local CLI** — `.mcp.json` names the server `decidalo_api_wrapper`, so the tools are `mcp__decidalo_api_wrapper__*`. (If you also add the wrapper as a user-level MCP under the name `decidalo-api-wrapper`, that copy is `mcp__decidalo-api-wrapper__*` — note the hyphens.)
-- **Claude Cowork / claude.ai** — the wrapper surfaces under whatever name the connector is registered with there.
+⚠️ `mcp__claude_ai_Decidalo__*` is **NOT** the wrapper — it is a *separate, official* Decidalo connector (profile/catalog/candidates/resource-plan/CV-export tools, ~14 of them). Its `profile` and `search_catalog` tools overlap enough to fetch a profile and resolve a name, but it has **no** `get_project` and **no** blob tools. So `profile-fetcher` deliberately uses this official connector for the profile, while the wrapper does name mapping, `get_project`, and blobs.
 
-⚠️ `mcp__claude_ai_Decidalo__*` is **NOT** the wrapper — it is a *separate, official* Decidalo connector (profile/catalog/candidates/resource-plan/CV-export tools, ~14 of them). Its `profile`/`search_catalog` tools happen to overlap enough to fetch a profile and resolve a name, but it has **no** `get_project` and **no** blob tools, so enrichment and blob downloads silently fail if that's the only prefix in the allowlist.
+Where the wrapper is actually callable depends on the **runtime** — this is the important part:
 
-For that reason every agent that needs the wrapper lists all the candidate prefixes together — `mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*, mcp__claude_ai_Decidalo__*` — so the wrapper is reachable regardless of which name it's connected under. Don't "normalize" these `tools:` lists down to one form. Confirm what's actually connected (and under which name) with `/mcp`.
+- **Local CLI** (verified working) — `.mcp.json` names the server `decidalo_api_wrapper`, so the tools are exposed to the model as `mcp__decidalo_api_wrapper__*` and work directly. (A user-level copy in `~/.claude.json` named `decidalo-api-wrapper` would be `mcp__decidalo-api-wrapper__*`, hyphens — but a duplicate registration of the same URL can break tool exposure; keep just one.)
+- **Claude Cowork / claude.ai (cloud)** — the cloud runtime only surfaces **claude.ai connectors** (`mcp__claude_ai_*`) to the model. A wrapper configured only via `.mcp.json`/`~/.claude.json` shows as "connected · 6 tools" in `/mcp` but its tools are **never exposed to the model**, so enrichment and blob downloads fail. To use the pipeline in the cloud, register the wrapper as a **custom claude.ai connector** (same URL, a name that does *not* collide with the official "Decidalo" connector, complete the OAuth login). It then surfaces under `mcp__claude_ai_<name>__*`.
+
+For that reason every agent that needs the wrapper lists the candidate prefixes together — `mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*` (and `mcp__claude_ai_Decidalo__*` only where the official connector is genuinely used). Don't "normalize" these `tools:` lists to one form. Confirm what's actually connected (and under which name) with `/mcp`.
 
 ### Word templates (blob storage, with local fallback)
 
@@ -104,15 +106,21 @@ requirements.txt       ← Python deps for the bundled scripts
 
 ## Agent pipeline
 
-Five agents in `agents/`:
-- `profile-information-extractor` — resolves a name to a UserID (`get_profile_name_mapping`) if needed, fetches profile from MCP, downloads the candidate picture from blob storage, runs enrich + map, writes JSON artifacts to `output/`
-- `cv-tailoring` — *optional* step after extraction; researches a target customer via web search and rewrites free-text fields (project descriptions, contributions, position title) in the mapped JSON to match the customer's industry, values, and tone; writes `output/<user_id>_template_data_<customer_slug>.json`
-- `cv-standardizer` — applies formatting and content rules from `rules/` to the template data JSON (tailored or base); writes `output/<user_id>_template_data_*_standardized.json`
-- `project-filler` — takes `output/<user_id>_template_data_*_standardized.json`, fetches the Word template from blob storage (`download_template_blob` + `fetch-blob`), calls `$fill-template`, writes `.docx`
-- `profile-export` — end-to-end orchestrator; asks for an optional target customer upfront and chains all four steps
+The export is split into **single-responsibility sub-agents** in `agents/`, chained by the `/create_cv` command (the orchestration lives in the command, run by the main thread — there is no separate orchestrator agent, so the main thread can both spawn the sub-agents and ask the user the interactive questions):
+
+- `profile-name-resolver` — name → UserID via `get_profile_name_mapping` (wrapper), with an official `search_catalog (name, …)` fallback. Skipped if a numeric UserID was given.
+- `profile-fetcher` — UserID → full profile via the **official** Decidalo MCP `profile` tool; normalizes the columnar `{columns, rows}` sections to lists of dicts; writes `output/<user_id>_profile_raw.json`.
+- `project-enricher` — enriches project title/description/industry via the wrapper `get_project` tool (`$enrich-information`), then maps to template-ready JSON (`$map-profile`); writes `output/<user_id>_profile_enriched.json` and `output/<user_id>_template_data.json`.
+- `cv-tailoring` — *optional*; researches a target customer via web search and rewrites free-text fields in the mapped JSON; writes `output/<user_id>_template_data_<customer_slug>.json`.
+- `cv-standardizer` — applies formatting/content rules from `rules/` to the most recent template data JSON; writes `output/<user_id>_template_data_*_standardized.json`.
+- `profile-image-fetcher` — UserID → candidate picture via the wrapper `download_image_blob` (+ `$fetch-blob`); returns a local image path. Runs right before `project-filler`.
+- `project-filler` — fetches the Word template from blob storage (`download_template_blob` + `$fetch-blob`), calls `$fill-template` on the standardized JSON, passes the picture via `--candidate-picture`; writes `.docx`.
+
+Which MCP server each agent uses: **wrapper** (`decidalo_api_wrapper`) for name mapping, `get_project`, and blob downloads; **official** Decidalo connector (`mcp__claude_ai_Decidalo__*`) for the profile itself.
 
 Slash commands (in `commands/`):
-- `/create_cv [UserID or name]` — runs the `profile-export` orchestrator end-to-end (accepts a name; resolved via `get_profile_name_mapping`)
+- `/create_cv [UserID or name]` — orchestrates the whole pipeline end-to-end (accepts a name; resolved via `profile-name-resolver`). The chain lives in this command, not a sub-agent.
+- `/resolve-id [name]` — resolves a person's name to their UserID only (via `get_profile_name_mapping`, with a `search_catalog` fallback); fetches/generates nothing.
 - `/setup-templates [paths]` — installs the `.docx` templates locally as an offline fallback (see `setup-templates` skill)
 - `/list-rules` — shows active standardization rules
 - `/edit-rules` — adds or changes a standardization rule
@@ -189,7 +197,6 @@ output/<user_id>_template_blob.json                                ← raw downl
 output/<user_id>_template_data_<customer_slug>.json                ← customer-tailored copy (optional)
 output/<user_id>_template_data_standardized.json                   ← after standardizer, no tailoring
 output/<user_id>_template_data_<customer_slug>_standardized.json   ← after tailoring + standardizer
-output/<user_id>_profile_manifest.json                             ← pointers to the above JSON files
 output/<Nachname>_<Vorname>_Salesprofil.docx
 ```
 

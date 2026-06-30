@@ -20,7 +20,7 @@ Look for these files in priority order and use the first one that exists:
 1. `output/<user_id>_template_data_<customer_slug>.json` — tailored copy (any `_template_data_*.json` that is not `_template_data.json` itself and does not end with `_standardized.json`)
 2. `output/<user_id>_template_data.json` — base mapped file
 
-If no template data file exists for the given UserID, stop and ask the user to run `profile-information-extractor` first.
+If no template data file exists for the given UserID, stop and ask the user to run `profile-fetcher` → `project-enricher` first.
 
 ## Output file naming
 

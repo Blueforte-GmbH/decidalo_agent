@@ -83,4 +83,4 @@ Do not modify any file. Do not create a tailored copy. Stop here.
 
 On success, the tailored file `output/<user_id>_template_data_<customer_slug>.json` is ready for `project-filler`. The original `output/<user_id>_template_data.json` is never modified.
 
-If the source template data file does not exist, stop and ask the user to run `profile-information-extractor` first.
+If the source template data file does not exist, stop and ask the user to run `profile-fetcher` → `project-enricher` first.

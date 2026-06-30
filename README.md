@@ -112,7 +112,6 @@ Pro Export entstehen in `output/`:
 <UserID>_template_data_<kunde>.json             ← kundenspezifische Kopie (optional)
 <UserID>_template_data_*_standardized.json      ← nach Standardisierung
 <UserID>_candidate_picture.<ext>                ← Profilbild aus Blob Storage (dekodiert)
-<UserID>_profile_manifest.json                  ← Verweise auf die JSON-Dateien
 <Nachname>_<Vorname>_Salesprofil.docx           ← fertiges Word-Dokument
 ```
 
@@ -120,10 +119,15 @@ Pro Export entstehen in `output/`:
 
 ## Architektur
 
-Das Plugin besteht aus spezialisierten Agents (`agents/`), die jeweils eine Stufe
-der Pipeline übernehmen, und Skills (`skills/`) mit gebündelten Python-Skripten
-für die eigentlichen Transformationen. Der `profile-export`-Agent orchestriert den
-gesamten Ablauf und ist das, was `/create_cv` auslöst.
+Das Plugin besteht aus spezialisierten Single-Purpose-Agents (`agents/`), die
+jeweils **eine** Stufe der Pipeline übernehmen, und Skills (`skills/`) mit
+gebündelten Python-Skripten für die eigentlichen Transformationen:
+`profile-name-resolver` (Name → UserID) → `profile-fetcher` (Profil holen) →
+`project-enricher` (Projekte anreichern + mappen) → `cv-tailoring` (optional) →
+`cv-standardizer` → `profile-image-fetcher` (Profilbild) → `project-filler`
+(Word-Dokument). Die Orchestrierung liegt im `/create_cv`-Command selbst (vom
+Haupt-Thread ausgeführt, der die Sub-Agents startet und Rückfragen stellt) — es
+gibt keinen separaten Orchestrator-Agent mehr.
 
 Die Word-Vorlagen nutzen **nicht** docxtpl/Jinja2, sondern Words native
 `MERGEFIELD`-Felder plus ein eigenes `RangeStart`/`RangeEnd`-Schema für Listen.
