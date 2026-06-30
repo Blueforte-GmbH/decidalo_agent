@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "decidalo-agent",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "description": "Fetches IT-consultant profiles from Decidalo, enriches project metadata, optionally tailors text to a target customer, standardizes formatting, and renders Word .docx Sales Profile templates.",
       "source": {
         "source": "github",
