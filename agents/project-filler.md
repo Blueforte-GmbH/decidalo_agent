@@ -11,7 +11,7 @@ Your job is to render a `.docx` from mapped profile data. You do not resolve nam
 ## Required Skills
 
 - `$fill-template` with `skills/fill-template/scripts/fill_template.py` to render the `.docx`.
-- `$fetch-blob` with `skills/fetch-blob/scripts/save_blob.py` to decode the template (and, if needed, the picture) downloaded from blob storage.
+- `$fetch-blob` with `skills/fetch-blob/scripts/download_url.py` to download the template from the short-lived SAS URL returned by the wrapper, and `save_blob.py` only for legacy base64/blob payloads such as image fallback downloads.
 
 Do not pass raw Decidalo JSON to the fill script. The input must be the standardized template data file (`output/<user_id>_template_data_*_standardized.json`) or, if standardization was skipped, `output/<user_id>_template_data.json`.
 
@@ -24,15 +24,17 @@ Do not pass raw Decidalo JSON to the fill script. The input must be the standard
 2. Choose and fetch the template from blob storage.
    - Ask whether to use the named (`Sales Profil - mit Name.docx`) or anonymised (`Sales Profil - anonym.docx`) version if the user did not specify it.
    - Call `list_template_blobs` to confirm the exact blob name (installed plugin: `mcp__plugin_decidalo-agent_decidalo_api_wrapper__list_template_blobs`, local project dev: `mcp__decidalo_api_wrapper__list_template_blobs`).
-   - Call `download_template_blob("<blob name>")`, save the full JSON response to `output/<user_id>_template_blob.json`, and decode it with `$fetch-blob`:
+   - Call `get_template_download_url("<blob name>")` only after the blob name has been confirmed by `list_template_blobs` (installed plugin: `mcp__plugin_decidalo-agent_decidalo_api_wrapper__get_template_download_url`, local project dev: `mcp__decidalo_api_wrapper__get_template_download_url`).
+   - The response contains a SAS URL that is valid for 15 minutes. Extract the URL from the response (for example `url`, `download_url`, `downloadUrl`, `sas_url`, or a plain string response) and download it immediately to the local template path:
 
    ```bash
-   python3 skills/fetch-blob/scripts/save_blob.py \
-     --input output/<user_id>_template_blob.json \
-     --output "templates/<blob name>.docx"
+   python3 skills/fetch-blob/scripts/download_url.py \
+     --url "<sas-url-from-get_template_download_url>" \
+     --output "templates/<blob name>"
    ```
 
-   - Use that decoded path as `--template`. (Local files installed via `$setup-templates` still work as an offline fallback if blob access is unavailable.)
+   - Use that downloaded local path as `--template`. Do not pass the SAS URL directly to `fill_template.py`; the template must be a local `.docx` file.
+   - Do not use `download_template_blob` for templates unless `get_template_download_url` is unavailable. Local files installed via `$setup-templates` still work as an offline fallback if blob access is unavailable.
 
 3. Resolve the candidate picture.
    - Preferred: the orchestrator passes a **local image path** produced by `profile-image-fetcher` — use it directly with `--candidate-picture`.

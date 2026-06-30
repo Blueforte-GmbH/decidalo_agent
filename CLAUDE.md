@@ -110,7 +110,7 @@ requirements.txt       ← Python deps for the bundled scripts
 The export is split into **single-responsibility sub-agents** in `agents/`, chained by the `/create_cv` command (the orchestration lives in the command, run by the main thread — there is no separate orchestrator agent, so the main thread can both spawn the sub-agents and ask the user the interactive questions):
 
 - `profile-name-resolver` — name → UserID via `get_profile_name_mapping` (wrapper), with an official `search_catalog (name, …)` fallback. Skipped if a numeric UserID was given.
-- `profile-fetcher` — UserID → full profile via the **official** Decidalo MCP `profile` tool; normalizes the columnar `{columns, rows}` sections to lists of dicts; writes `output/<user_id>_profile_raw.json`.
+- `profile-fetcher` — UserID → full profile via the **official** Decidalo MCP `profile` tool; saves the verbatim response to `output/<user_id>_profile_mcp.json`, then `$normalize-profile` turns the columnar `{columns, rows}` sections into lists of dicts → `output/<user_id>_profile_raw.json`.
 - `project-enricher` — enriches project title/description/industry via the wrapper `get_project` tool (`$enrich-information`), then maps to template-ready JSON (`$map-profile`); writes `output/<user_id>_profile_enriched.json` and `output/<user_id>_template_data.json`.
 - `cv-tailoring` — *optional*; researches a target customer via web search and rewrites free-text fields in the mapped JSON; writes `output/<user_id>_template_data_<customer_slug>.json`.
 - `cv-standardizer` — applies formatting/content rules from `rules/` to the most recent template data JSON; writes `output/<user_id>_template_data_*_standardized.json`.
@@ -126,7 +126,7 @@ Slash commands (in `commands/`):
 - `/list-rules` — shows active standardization rules
 - `/edit-rules` — adds or changes a standardization rule
 
-Skills in `skills/` bundle the Python scripts (`enrich-information`, `map-profile`, `fill-template`, `fetch-blob` for decoding blob downloads into local files, plus `setup-templates` as an offline template fallback). Agents must use the bundled skill scripts — no ad-hoc transformation code.
+Skills in `skills/` bundle the Python scripts (`normalize-profile` for reshaping the raw `profile` MCP response, `enrich-information`, `map-profile`, `fill-template`, `fetch-blob` for decoding blob downloads into local files, plus `setup-templates` as an offline template fallback). Agents must use the bundled skill scripts — no ad-hoc transformation code.
 
 The `/setup-templates` command installs the `.docx` templates into `templates/` as an offline fallback (see [Word templates](#word-templates-blob-storage-with-local-fallback)); templates are normally fetched from blob storage at fill time.
 
@@ -188,7 +188,8 @@ These blob downloads come back as **text** (base64/JSON), so the agent saves the
 ## Output artifacts per export
 
 ```
-output/<user_id>_profile_raw.json                                  ← from MCP, unmodified
+output/<user_id>_profile_mcp.json                                  ← raw `profile` MCP response, verbatim (normalize input)
+output/<user_id>_profile_raw.json                                  ← normalized to lists of dicts (via $normalize-profile)
 output/<user_id>_project_details.json                              ← raw get_project responses, keyed by ID (enrichment input)
 output/<user_id>_profile_enriched.json                             ← project titles/industries added
 output/<user_id>_template_data.json                                ← mapped, ready for standardizer
