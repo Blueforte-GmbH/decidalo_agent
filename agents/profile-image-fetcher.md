@@ -21,7 +21,7 @@ Your single job: given a **UserID**, fetch the candidate photo from blob storage
 3. Download it with `$fetch-blob` (match the output extension to the blob's extension):
 
 ```bash
-python3 skills/fetch-blob/scripts/download_url.py \
+bin/py.sh skills/fetch-blob/scripts/download_url.py \
   --url "<sas-url-from-get_image_download_url>" \
   --output output/<user_id>_candidate_picture.jpg
 ```

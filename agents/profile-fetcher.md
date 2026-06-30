@@ -21,7 +21,7 @@ Your single job: given a numeric **UserID**, fetch the full profile from the **o
 3. Normalize it to the canonical raw profile with `$normalize-profile`:
 
 ```bash
-python3 skills/normalize-profile/scripts/normalize_profile.py \
+bin/py.sh skills/normalize-profile/scripts/normalize_profile.py \
   --input output/<user_id>_profile_mcp.json \
   --output output/<user_id>_profile_raw.json
 ```

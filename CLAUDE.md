@@ -23,6 +23,20 @@ The plugin source is pinned to the `github` source type tracking the default bra
 pip install -r requirements.txt   # lxml, click, requests
 ```
 
+### Running the bundled scripts — always via `bin/py.sh`, never bare `python3`
+
+A bare `python3 skills/…` is non-deterministic: depending on context (main thread vs. subagent, local CLI vs. Cowork cloud) it resolves to a different interpreter — often a PEP-668-locked system/Homebrew Python that lacks `lxml`/`click`/`requests` and refuses `pip install`. That is exactly why a script can work in the main thread yet fail inside a subagent.
+
+Every dep-requiring script is therefore invoked through the launcher [bin/py.sh](bin/py.sh), which forces a deterministic interpreter *with* the requirements:
+
+```bash
+bin/py.sh skills/<skill>/scripts/<script>.py …    # instead of: python3 skills/…
+```
+
+It prefers a cached `uv` environment when `uv` is on PATH (typical local CLI), and otherwise bootstraps a project-local `.venv` (typical Cowork cloud — a fresh venv is not "externally-managed", so `pip` works there despite PEP 668). No global `pip install` is needed. Agents and SKILL.md examples must keep using `bin/py.sh` for these scripts.
+
+**Exception — the three pure-stdlib scripts stay on `python3`:** `list_rules.py`, `scaffold_rule.py`, and `install_templates.py` import only the standard library. `install_templates.py` in particular backs the *offline* `/setup-templates` fallback, so it must never be routed through a launcher that could attempt a `pip install`.
+
 The Decidalo MCP server is configured in `.mcp.json` — an Azure Container App wrapper (`decidalo-api-wrapper…northeurope.azurecontainerapps.io/`, **Streamable HTTP** transport, `type: "http"`) that holds the Decidalo Import API token **server-side**. The wrapper itself is an **OAuth-protected resource** (`/.well-known/oauth-protected-resource`, scope `mcp.access`, dynamic client registration), so the MCP client must complete an OAuth flow on first connect — the client handles registration and the browser login automatically; check status with `/mcp`. No Decidalo Import API key is needed client-side (that token stays server-side); the OAuth login gates access to the wrapper.
 
 **MCP tool naming + runtime gotcha (read this before debugging "tool not found"):** the wrapper's tools are `get_profile_name_mapping`, `get_project`, `list_image_blobs`, `get_image_download_url`, `download_image_blob`, `list_template_blobs`, `get_template_download_url`, `download_template_blob`.
@@ -55,7 +69,7 @@ This copies the files into `templates/` under the canonical names the fill step 
 
 List all MERGEFIELD names in a template:
 ```bash
-python3 skills/fill-template/scripts/fill_template.py --list-fields --template "templates/Sales Profil - mit Name.docx"
+bin/py.sh skills/fill-template/scripts/fill_template.py --list-fields --template "templates/Sales Profil - mit Name.docx"
 ```
 
 Run the three steps manually:
@@ -63,22 +77,22 @@ Run the three steps manually:
 # 1. Enrich project metadata — data comes from the get_project MCP tool, so this is
 #    two script calls around the MCP fetch (no API key in the script):
 #    a) list which projects need data
-python3 skills/enrich-information/scripts/enrich_projects.py \
+bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
   --profile output/<user_id>_profile_raw.json --list-pending
 #    b) call get_project for each ID, save responses to output/<user_id>_project_details.json,
 #       then merge:
-python3 skills/enrich-information/scripts/enrich_projects.py \
+bin/py.sh skills/enrich-information/scripts/enrich_projects.py \
   --profile output/<user_id>_profile_raw.json \
   --details output/<user_id>_project_details.json \
   --output output/<user_id>_profile_enriched.json
 
 # 2. Map to template-ready JSON
-python3 skills/map-profile/scripts/map_profile_to_template.py \
+bin/py.sh skills/map-profile/scripts/map_profile_to_template.py \
   --profile output/<user_id>_profile_enriched.json \
   --output output/<user_id>_template_data.json
 
 # 3. Fill Word template
-python3 skills/fill-template/scripts/fill_template.py \
+bin/py.sh skills/fill-template/scripts/fill_template.py \
   --template "templates/Sales Profil - mit Name.docx" \
   --profile output/<user_id>_template_data.json \
   --output "output/<Nachname>_<Vorname>_Salesprofil.docx"

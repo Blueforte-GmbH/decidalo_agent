@@ -28,7 +28,7 @@ Do not pass raw Decidalo JSON to the fill script. The input must be the standard
    - The response contains a SAS URL that is valid for 15 minutes. Extract the URL from the response (for example `url`, `download_url`, `downloadUrl`, `sas_url`, or a plain string response) and download it immediately to the local template path:
 
    ```bash
-   python3 skills/fetch-blob/scripts/download_url.py \
+   bin/py.sh skills/fetch-blob/scripts/download_url.py \
      --url "<sas-url-from-get_template_download_url>" \
      --output "templates/<blob name>"
    ```
@@ -45,7 +45,7 @@ Do not pass raw Decidalo JSON to the fill script. The input must be the standard
 4. Render the document with `$fill-template`:
 
 ```bash
-python3 skills/fill-template/scripts/fill_template.py \
+bin/py.sh skills/fill-template/scripts/fill_template.py \
   --template "templates/Sales Profil - mit Name.docx" \
   --profile output/<user_id>_template_data.json \
   --output "output/<Nachname>_<Vorname>_Salesprofil.docx"
