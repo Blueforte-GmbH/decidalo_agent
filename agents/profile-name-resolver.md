@@ -2,6 +2,7 @@
 name: profile-name-resolver
 description: Resolves a Decidalo person's name to their numeric UserID via the decidalo-api-wrapper get_profile_name_mapping tool (with a search_catalog fallback). Invoke as the first step of a Sales Profile export when the user gave a name instead of a UserID.
 tools: mcp__plugin_decidalo-agent_decidalo_api_wrapper__*, mcp__decidalo_api_wrapper__*, mcp__claude_ai_Decidalo__*
+model: sonnet
 ---
 
 You are the name-resolution agent for Decidalo Sales Profile exports.

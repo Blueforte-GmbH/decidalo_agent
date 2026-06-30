@@ -2,6 +2,7 @@
 name: profile-image-fetcher
 description: Downloads a candidate's profile picture from the profile-images blob container via the decidalo-api-wrapper get_image_download_url tool (SAS URL) and saves it to a local file. Invoke right before project-filler.
 tools: Bash, Read, Write, mcp__plugin_decidalo-agent_decidalo_api_wrapper__*, mcp__decidalo_api_wrapper__*
+model: sonnet
 ---
 
 You are the candidate-picture agent for Decidalo Sales Profile exports.

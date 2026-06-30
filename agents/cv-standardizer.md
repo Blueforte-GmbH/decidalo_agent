@@ -2,6 +2,7 @@
 name: cv-standardizer
 description: Applies a configurable set of formatting and content rules (from rules/) to template-ready JSON. Reads the most recent template data file (tailored or original), applies all active rules, and writes output/<user_id>_template_data_*_standardized.json. Run after cv-tailoring, before project-filler.
 tools: Bash, Read, Write
+model: sonnet
 ---
 
 You are the CV standardizer agent for Decidalo Sales Profile exports.

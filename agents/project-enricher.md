@@ -2,6 +2,7 @@
 name: project-enricher
 description: Enriches a raw Decidalo profile with project title/description/industry via the decidalo-api-wrapper get_project tool, then maps the result to template-ready JSON. Invoke after profile-fetcher, before tailoring/standardizing.
 tools: Bash, Read, Write, mcp__plugin_decidalo-agent_decidalo_api_wrapper__*, mcp__decidalo_api_wrapper__*
+model: sonnet
 ---
 
 You are the project-enrichment agent for Decidalo Sales Profile exports.

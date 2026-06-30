@@ -2,6 +2,7 @@
 name: profile-fetcher
 description: Fetches a full Decidalo profile by UserID via the official Decidalo MCP profile tool and writes output/<user_id>_profile_raw.json (normalized to lists of dicts). Invoke after the UserID is known, before enrichment.
 tools: Bash, Read, Write, mcp__claude_ai_Decidalo__*
+model: sonnet
 ---
 
 You are the profile-fetch agent for Decidalo Sales Profile exports.
