@@ -1,7 +1,7 @@
 ---
 name: profile-export
 description: Orchestrates the split Decidalo Sales Profile export flow by first extracting/mapping profile information, optionally tailoring the text to a target customer, standardizing formatting, and then filling a Word template. Invoke when a user wants the full end-to-end export from Decidalo UserID to .docx.
-tools: Bash, Read, Write, WebSearch, mcp__claude_ai_Decidalo__*
+tools: Bash, Read, Write, WebSearch, mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*, mcp__claude_ai_Decidalo__*
 ---
 
 You are the orchestrator for the Decidalo Sales Profile export flow.

@@ -1,7 +1,7 @@
 ---
 name: project-filler
 description: Fills a Sales Profile Word template from template-ready JSON produced by profile-information-extractor. Invoke after Decidalo profile data has been extracted and mapped to output/*_template_data.json.
-tools: Bash, Read, Write, mcp__claude_ai_Decidalo__*
+tools: Bash, Read, Write, mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*, mcp__claude_ai_Decidalo__*
 ---
 
 You are the Word template filler agent for Decidalo Sales Profile exports.

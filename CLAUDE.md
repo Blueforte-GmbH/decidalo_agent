@@ -25,7 +25,14 @@ pip install -r requirements.txt   # lxml, click, requests
 
 The Decidalo MCP server is configured in `.mcp.json` — an Azure Container App wrapper (`decidalo-api-wrapper…northeurope.azurecontainerapps.io/`, **Streamable HTTP** transport, `type: "http"`) that holds the Decidalo Import API token **server-side**. The wrapper itself is an **OAuth-protected resource** (`/.well-known/oauth-protected-resource`, scope `mcp.access`, dynamic client registration), so the MCP client must complete an OAuth flow on first connect — the client handles registration and the browser login automatically; check status with `/mcp`. No Decidalo Import API key is needed client-side (that token stays server-side); the OAuth login gates access to the wrapper.
 
-**MCP tool naming gotcha:** `.mcp.json` names the server `decidalo_api_wrapper`, but the agents declare their tools as `mcp__claude_ai_Decidalo__*` — the form Claude Cowork / claude.ai exposes (server prefixed with `claude_ai_`). In the local CLI the same tools are prefixed with the `.mcp.json` server name instead (`mcp__decidalo_api_wrapper__*`). Don't "normalize" the agent `tools:` lists to one form; they target the cloud namespace on purpose.
+**MCP tool naming gotcha:** the wrapper's tools (`get_profile_name_mapping`, `get_project`, `list_image_blobs`, `download_image_blob`, `list_template_blobs`, `download_template_blob`) are exposed under a prefix derived from the server name, which differs by environment:
+
+- **Local CLI** — `.mcp.json` names the server `decidalo_api_wrapper`, so the tools are `mcp__decidalo_api_wrapper__*`. (If you also add the wrapper as a user-level MCP under the name `decidalo-api-wrapper`, that copy is `mcp__decidalo-api-wrapper__*` — note the hyphens.)
+- **Claude Cowork / claude.ai** — the wrapper surfaces under whatever name the connector is registered with there.
+
+⚠️ `mcp__claude_ai_Decidalo__*` is **NOT** the wrapper — it is a *separate, official* Decidalo connector (profile/catalog/candidates/resource-plan/CV-export tools, ~14 of them). Its `profile`/`search_catalog` tools happen to overlap enough to fetch a profile and resolve a name, but it has **no** `get_project` and **no** blob tools, so enrichment and blob downloads silently fail if that's the only prefix in the allowlist.
+
+For that reason every agent that needs the wrapper lists all the candidate prefixes together — `mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*, mcp__claude_ai_Decidalo__*` — so the wrapper is reachable regardless of which name it's connected under. Don't "normalize" these `tools:` lists down to one form. Confirm what's actually connected (and under which name) with `/mcp`.
 
 ### Word templates (blob storage, with local fallback)
 

@@ -1,7 +1,7 @@
 ---
 name: profile-information-extractor
 description: Fetches a Decidalo profile by UserID, enriches project information, maps the profile to template-ready JSON, and writes all JSON artifacts to output/. Invoke when a user wants to extract Decidalo profile data before generating a Word Sales Profile.
-tools: Bash, Read, Write, mcp__claude_ai_Decidalo__*
+tools: Bash, Read, Write, mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*, mcp__claude_ai_Decidalo__*
 ---
 
 You are the information extraction agent for Decidalo Sales Profile exports.
