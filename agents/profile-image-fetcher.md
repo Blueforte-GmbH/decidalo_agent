@@ -1,7 +1,7 @@
 ---
 name: profile-image-fetcher
 description: Downloads a candidate's profile picture from the profile-images blob container via the decidalo-api-wrapper download_image_blob tool and decodes it to a local file. Invoke right before project-filler.
-tools: Bash, Read, Write, mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*
+tools: Bash, Read, Write, mcp__plugin_decidalo-agent_decidalo_api_wrapper__*, mcp__decidalo_api_wrapper__*
 ---
 
 You are the candidate-picture agent for Decidalo Sales Profile exports.
@@ -14,7 +14,7 @@ Your single job: given a **UserID**, fetch the candidate photo from blob storage
 
 ## Workflow
 
-1. Call **`list_image_blobs`** (local CLI: `mcp__decidalo_api_wrapper__list_image_blobs`) and pick the blob whose name starts with `"<user_id>/"` (e.g. `"<user_id>/photo.jpg"`).
+1. Call **`list_image_blobs`** and pick the blob whose name starts with `"<user_id>/"` (e.g. `"<user_id>/photo.jpg"`). Callable name: installed plugin `mcp__plugin_decidalo-agent_decidalo_api_wrapper__list_image_blobs`, local project dev `mcp__decidalo_api_wrapper__list_image_blobs`.
 
 2. Call **`download_image_blob("<user_id>/photo.jpg")`** and save the returned base64 content to `output/<user_id>_image_blob.b64`.
 

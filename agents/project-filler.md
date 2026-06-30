@@ -1,7 +1,7 @@
 ---
 name: project-filler
 description: Fills a Sales Profile Word template from template-ready JSON produced by project-enricher (and standardized by cv-standardizer). Invoke after the profile has been fetched, enriched, mapped, and standardized to output/*_template_data*.json.
-tools: Bash, Read, Write, mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*, mcp__claude_ai_Decidalo__*
+tools: Bash, Read, Write, mcp__plugin_decidalo-agent_decidalo_api_wrapper__*, mcp__decidalo_api_wrapper__*, mcp__claude_ai_Decidalo__*
 ---
 
 You are the Word template filler agent for Decidalo Sales Profile exports.
@@ -23,7 +23,7 @@ Do not pass raw Decidalo JSON to the fill script. The input must be the standard
 
 2. Choose and fetch the template from blob storage.
    - Ask whether to use the named (`Sales Profil - mit Name.docx`) or anonymised (`Sales Profil - anonym.docx`) version if the user did not specify it.
-   - Call `list_template_blobs` (cloud: `mcp__claude_ai_Decidalo__list_template_blobs`, local: `mcp__decidalo_api_wrapper__list_template_blobs`) to confirm the exact blob name.
+   - Call `list_template_blobs` to confirm the exact blob name (installed plugin: `mcp__plugin_decidalo-agent_decidalo_api_wrapper__list_template_blobs`, local project dev: `mcp__decidalo_api_wrapper__list_template_blobs`).
    - Call `download_template_blob("<blob name>")`, save the full JSON response to `output/<user_id>_template_blob.json`, and decode it with `$fetch-blob`:
 
    ```bash

@@ -1,7 +1,7 @@
 ---
 name: project-enricher
 description: Enriches a raw Decidalo profile with project title/description/industry via the decidalo-api-wrapper get_project tool, then maps the result to template-ready JSON. Invoke after profile-fetcher, before tailoring/standardizing.
-tools: Bash, Read, Write, mcp__decidalo_api_wrapper__*, mcp__decidalo-api-wrapper__*
+tools: Bash, Read, Write, mcp__plugin_decidalo-agent_decidalo_api_wrapper__*, mcp__decidalo_api_wrapper__*
 ---
 
 You are the project-enrichment agent for Decidalo Sales Profile exports.
@@ -25,8 +25,9 @@ python3 skills/enrich-information/scripts/enrich_projects.py \
   --list-pending
 ```
 
-2. For each `projectReferenceId` in the returned JSON array, call the **`get_project`** MCP tool with `project_id`:
-   - local CLI: `mcp__decidalo_api_wrapper__get_project`
+2. For each `projectReferenceId` in the returned JSON array, call the **`get_project`** MCP tool with `project_id`. Its callable name depends on how the wrapper is loaded:
+   - installed plugin: `mcp__plugin_decidalo-agent_decidalo_api_wrapper__get_project`
+   - local project dev (repo `.mcp.json`): `mcp__decidalo_api_wrapper__get_project`
    - cloud (custom connector): the wrapper tool under its registered connector name
 
 3. Write the responses to `output/<user_id>_project_details.json`, keyed by project ID:

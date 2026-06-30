@@ -11,8 +11,9 @@ If no name was provided after the command, ask the user for the person's name fi
 Steps:
 
 1. Call the **`get_profile_name_mapping`** MCP tool with the given name. Tool name by runtime:
-   - cloud (Claude Cowork / claude.ai): `mcp__claude_ai_Decidalo__get_profile_name_mapping`
-   - local CLI: `mcp__decidalo_api_wrapper__get_profile_name_mapping`
+   - installed plugin: `mcp__plugin_decidalo-agent_decidalo_api_wrapper__get_profile_name_mapping`
+   - local project dev (repo `.mcp.json`): `mcp__decidalo_api_wrapper__get_profile_name_mapping`
+   - cloud (custom connector): the wrapper tool under its registered connector name
 
 
 1. Report the result:
